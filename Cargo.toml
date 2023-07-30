@@ -5,6 +5,7 @@ edition = "2021"
 description = "MongoDB implementation of Queue trait from aide-de-camp"
 keywords = ["job", "scheduler", "queue", "mongodb", "database"]
 authors = ["Felipe Coury <felipe.coury@gmail.com>"]
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 aide-de-camp = { version = "0.2.0", features = ["runner"] }
