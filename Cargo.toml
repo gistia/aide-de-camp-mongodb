@@ -1,0 +1,24 @@
+[package]
+name = "aide-de-camp-mongodb"
+version = "0.2.0"
+edition = "2021"
+description = "MongoDB implementation of Queue trait from aide-de-camp"
+keywords = ["job", "scheduler", "queue", "mongodb", "database", "document"]
+authors = ["Felipe Coury <felipe.coury@gmail.com>"]
+
+[dependencies]
+aide-de-camp = { version = "0.2.0", features = ["runner"] }
+anyhow = "1.0.72"
+async-trait = "0.1.72"
+bincode = "2.0.0-rc.1"
+bson = "2.6.1"
+chrono = "0.4.26"
+mongodb = { version = "2.6.0", features = ["openssl-tls"] }
+serde = { version = "1.0.178", features = ["derive"] }
+serde_json = "1.0.104"
+thiserror = "1.0.44"
+tracing = "0.1.30"
+
+[dev-dependencies]
+tracing-subscriber = "0.3.8"
+tokio = { version = "1", features = ["macros"] }
