@@ -1,4 +1,4 @@
-# aide-de-camp-sqlite
+# aide-de-camp-mongodb
 
 A MongoDB backed implementation of the job Queue for [aide-de-camp](https://github.com/ZeroAssumptions/aide-de-camp).
 
@@ -61,3 +61,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+## License
+
+I decided to follow the same licensing model as aide-de-camp, so be welcome to choose either of the following based on your use case:
+
+Apache License, Version 2.0 (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0)
+MIT license (LICENSE-MIT or http://opensource.org/licenses/MIT)
