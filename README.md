@@ -1,5 +1,11 @@
 # aide-de-camp-mongodb
 
+![crates.io](https://img.shields.io/crates/v/aide-de-camp-mongodb.svg)
+![docs.rs](https://img.shields.io/docsrs/aide-de-camp-mongodb)
+![CI Tests](https://github.com/gistia/aide-de-camp-mongodb/actions/workflows/ci.yml/badge.svg)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A MongoDB backed implementation of the job Queue for [aide-de-camp](https://github.com/ZeroAssumptions/aide-de-camp).
 
 ## Example
