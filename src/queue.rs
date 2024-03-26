@@ -10,7 +10,9 @@ use bincode::Decode;
 use bson::{doc, Binary};
 use chrono::Utc;
 use mongodb::{
-    options::{ClientOptions, ConnectionString, FindOneOptions, Tls, TlsOptions, UpdateOptions},
+    options::{
+        ClientOptions, ConnectionString, FindOneAndUpdateOptions, ReturnDocument, Tls, TlsOptions,
+    },
     Client, Collection, Database,
 };
 use tracing::instrument;
@@ -128,29 +130,27 @@ impl Queue for MongoDbQueue {
             "job_type": job_types_doc
         };
 
+        let update_doc = doc! {
+            "$set": { "started_at": bson::DateTime::from_millis(Utc::now().timestamp_millis()) },
+            "$inc": { "retries": 1 }
+        };
+
         let sort_doc = doc! {
             "priority": -1
         };
 
-        let find_options = FindOneOptions::builder().sort(sort_doc).build();
+        let options = FindOneAndUpdateOptions::builder()
+            .sort(sort_doc)
+            .return_document(ReturnDocument::After)
+            .build();
+
         let row = self
             .collection()
-            .find_one(filter_doc, find_options)
+            .find_one_and_update(filter_doc, update_doc, options)
             .await
             .context("Failed to check out a job from the queue")?;
 
         if let Some(row) = row {
-            let update_doc = doc! {
-                "$set": { "started_at": bson::DateTime::from_millis(Utc::now().timestamp_millis()) },
-                "$inc": { "retries": 1 }
-            };
-            let update_options = UpdateOptions::builder().build();
-
-            self.collection()
-                .update_one(doc! { "jid": &row.jid }, update_doc, update_options)
-                .await
-                .context("Failed to update job")?;
-
             Ok(Some(MongoDbJobHandle::new(row, self.database.clone())))
         } else {
             Ok(None)
@@ -194,18 +194,12 @@ impl Queue for MongoDbQueue {
 
         let row = self
             .collection()
-            .find_one(filter_doc.clone(), None)
+            .find_one_and_delete(filter_doc, None)
             .await
-            .context("Failed to find job in the queue")?;
+            .context("Failed to remove job from the queue")?;
 
         match row {
             Some(row) => {
-                let _ = self
-                    .collection()
-                    .delete_one(filter_doc, None)
-                    .await
-                    .context("Failed to remove job from the queue")?;
-
                 let payload: Vec<u8> = row.payload.bytes;
                 let (decoded, _) = bincode::decode_from_slice(&payload, self.bincode_config)?;
                 Ok(decoded)
