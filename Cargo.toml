@@ -1,6 +1,6 @@
 [package]
 name = "aide-de-camp-mongodb"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "MongoDB implementation of Queue trait from aide-de-camp"
 keywords = ["job", "scheduler", "queue", "mongodb", "database"]
