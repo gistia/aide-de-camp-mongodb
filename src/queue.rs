@@ -11,7 +11,8 @@ use bson::{doc, Binary};
 use chrono::Utc;
 use mongodb::{
     options::{
-        ClientOptions, ConnectionString, FindOneAndUpdateOptions, ReturnDocument, Tls, TlsOptions,
+        ClientOptions, ConnectionString, FindOneAndUpdateOptions,
+        ReturnDocument, Tls, TlsOptions,
     },
     Client, Collection, Database,
 };
@@ -44,7 +45,7 @@ impl MongoDbQueue {
         match cert_path {
             Some(cert_path) => {
                 let conn_str = ConnectionString::parse(uri)?;
-                let mut options = ClientOptions::parse_connection_string(conn_str).await?;
+                let mut options = ClientOptions::parse(conn_str).await?;
                 let mut tls_options = TlsOptions::default();
                 tls_options.ca_file_path = Some(cert_path.clone().into());
                 tls_options.allow_invalid_hostnames = Some(true);
@@ -61,7 +62,7 @@ impl MongoDbQueue {
 
     #[cfg(test)]
     pub async fn delete_database(&self) -> Result<(), mongodb::error::Error> {
-        self.database.drop(None).await
+        self.database.drop().await
     }
 }
 
@@ -88,23 +89,20 @@ impl Queue for MongoDbQueue {
 
         self.database
             .collection::<JobRow>("adc_queue")
-            .insert_one(
-                JobRow {
-                    jid: format!("{}", jid),
-                    queue: "default".to_string(),
-                    job_type: job_type.to_string(),
-                    payload: Binary {
-                        subtype: mongodb::bson::spec::BinarySubtype::Generic,
-                        bytes: payload.clone(),
-                    },
-                    retries: 0,
-                    scheduled_at: bson::DateTime::from_millis(scheduled_at.timestamp_millis()),
-                    enqueued_at: bson::DateTime::from_millis(Utc::now().timestamp_millis()),
-                    priority: priority as i64,
-                    started_at: None,
+            .insert_one(JobRow {
+                jid: format!("{}", jid),
+                queue: "default".to_string(),
+                job_type: job_type.to_string(),
+                payload: Binary {
+                    subtype: mongodb::bson::spec::BinarySubtype::Generic,
+                    bytes: payload.clone(),
                 },
-                None,
-            )
+                retries: 0,
+                scheduled_at: bson::DateTime::from_millis(scheduled_at.timestamp_millis()),
+                enqueued_at: bson::DateTime::from_millis(Utc::now().timestamp_millis()),
+                priority: priority as i64,
+                started_at: None,
+            })
             .await
             .context("Failed to add job to the queue")?;
 
@@ -146,7 +144,8 @@ impl Queue for MongoDbQueue {
 
         let row = self
             .collection()
-            .find_one_and_update(filter_doc, update_doc, options)
+            .find_one_and_update(filter_doc, update_doc)
+            .with_options(Some(options))
             .await
             .context("Failed to check out a job from the queue")?;
 
@@ -162,10 +161,7 @@ impl Queue for MongoDbQueue {
         let jid: String = format!("{}", job_id);
         let result = self
             .collection()
-            .delete_one(
-                doc! { "started_at": None::<bson::DateTime>, "jid": jid },
-                None,
-            )
+            .delete_one(doc! { "started_at": None::<bson::DateTime>, "jid": jid })
             .await
             .context("Failed to remove job from the queue")?;
 
@@ -194,7 +190,7 @@ impl Queue for MongoDbQueue {
 
         let row = self
             .collection()
-            .find_one_and_delete(filter_doc, None)
+            .find_one_and_delete(filter_doc)
             .await
             .context("Failed to remove job from the queue")?;
 

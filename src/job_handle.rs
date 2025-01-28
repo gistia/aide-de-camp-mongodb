@@ -35,7 +35,7 @@ impl JobHandle for MongoDbJobHandle {
 
     async fn complete(mut self) -> Result<(), QueueError> {
         self.collection()
-            .delete_one(doc! { "jid": self.row.jid }, None)
+            .delete_one(doc! { "jid": self.row.jid })
             .await
             .context("Failed to mark job as completed")?;
         Ok(())
@@ -46,7 +46,6 @@ impl JobHandle for MongoDbJobHandle {
             .update_one(
                 doc! { "jid": self.row.jid },
                 doc! { "$set": { "started_at": None::<bson::DateTime> } },
-                None,
             )
             .await
             .context("Failed to mark job as failed")?;
@@ -66,21 +65,22 @@ impl JobHandle for MongoDbJobHandle {
         let enqueued_at = self.row.enqueued_at;
 
         let mut session = client
-            .start_session(None)
+            .start_session()
             .await
             .context("Failed to start session")?;
         session
-            .start_transaction(None)
+            .start_transaction()
             .await
             .context("Failed to start transaction")?;
 
         collection
-            .delete_one_with_session(doc! { "jid": jid.clone() }, None, &mut session)
+            .delete_one(doc! { "jid": jid.clone() })
+            .session(&mut session)
             .await
             .context("Failed to delete job from the queue")?;
 
         dead_collection
-            .insert_one_with_session(
+            .insert_one(
                 JobRow {
                     jid,
                     queue: "default".to_string(),
@@ -92,9 +92,8 @@ impl JobHandle for MongoDbJobHandle {
                     priority: 0,
                     started_at: None,
                 },
-                None,
-                &mut session,
             )
+            .session(&mut session)
             .await
             .context("Failed to mark job as dead")?;
 
