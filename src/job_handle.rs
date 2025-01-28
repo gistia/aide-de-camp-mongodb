@@ -57,48 +57,47 @@ impl JobHandle for MongoDbJobHandle {
         let dead_collection = self.dead_queue_collection().clone();
         let client = collection.client();
 
-        let jid = self.row.jid;
-        let retries = self.row.retries;
-        let job_type = self.row.job_type.clone();
-        let payload = self.row.payload.clone();
-        let scheduled_at = self.row.scheduled_at;
-        let enqueued_at = self.row.enqueued_at;
-
         let mut session = client
             .start_session()
             .await
             .context("Failed to start session")?;
         session
             .start_transaction()
-            .await
-            .context("Failed to start transaction")?;
+            .and_run(
+                (&collection, &dead_collection, &self.row),
+                |session, (collection, dead_collection, row)| {
+                    Box::pin(async move {
+                        let jid = row.jid.clone();
+                        let retries = row.retries;
+                        let job_type = row.job_type.clone();
+                        let payload = row.payload.clone();
+                        let scheduled_at = row.scheduled_at;
+                        let enqueued_at = row.enqueued_at;
 
-        collection
-            .delete_one(doc! { "jid": jid.clone() })
-            .session(&mut session)
-            .await
-            .context("Failed to delete job from the queue")?;
+                        collection
+                            .delete_one(doc! { "jid": jid.clone() })
+                            .session(&mut *session)
+                            .await?;
 
-        dead_collection
-            .insert_one(
-                JobRow {
-                    jid,
-                    queue: "default".to_string(),
-                    job_type,
-                    payload,
-                    retries,
-                    scheduled_at,
-                    enqueued_at,
-                    priority: 0,
-                    started_at: None,
+                        dead_collection
+                            .insert_one(JobRow {
+                                jid,
+                                queue: "default".to_string(),
+                                job_type,
+                                payload,
+                                retries,
+                                scheduled_at,
+                                enqueued_at,
+                                priority: 0,
+                                started_at: None,
+                            })
+                            .session(session)
+                            .await?;
+
+                        Ok(())
+                    })
                 },
             )
-            .session(&mut session)
-            .await
-            .context("Failed to mark job as dead")?;
-
-        session
-            .commit_transaction()
             .await
             .context("Failed to commit transaction")?;
 
